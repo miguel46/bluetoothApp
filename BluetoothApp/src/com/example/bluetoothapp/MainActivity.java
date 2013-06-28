@@ -18,7 +18,6 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.provider.Settings;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -52,39 +51,42 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 	ProgressBar progressBar;
 	private static final int MESSAGE_READ = 5;
-	
-	private int Pair_Request=6;
+
+	private int Pair_Request = 6;
 	ConnectThread connectThread;
 	ConnectedThread connectedThread;
-
 
 	Handler mHandler = new Handler(new Handler.Callback() {
 
 		@Override
-		public boolean  handleMessage(Message msg) {
+		public boolean handleMessage(Message msg) {
 			Log.i("CONNECT", "ENTROU AQUI");
-			
+
 			if (msg.what == (CONNECTED)) {
 
 				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
-				connectedThread = new ConnectedThread((BluetoothSocket) msg.obj);
-				connectedThread.start();
+				
 
 				Toast.makeText(getApplicationContext(), "Handler",
 						Toast.LENGTH_SHORT).show();
 
 				String s = "Connected, welcome!";
-				
+
 				connectedThread.write(s.getBytes());
+
+				// START THE CHAT
+//				Intent intent = new Intent(getApplicationContext(), Chat.class);
+//
+//				startActivity(intent);
+
 				return true;
 			} else if (msg.what == MESSAGE_READ) {
 
-				
 				return true;
 
 			}
 			return false;
-			
+
 		};
 	});
 
@@ -211,19 +213,9 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			Toast.makeText(this, "Without bluetooth, it will not work.",
 					Toast.LENGTH_SHORT).show();
 
-		}else if(requestCode==Pair_Request && resultCode==RESULT_OK){
-			
-			
-			
-			
-			Toast.makeText(this, "Paring to device", Toast.LENGTH_SHORT)
-			.show();
-	
-		
-			
-			
-			
-			
+		} else if (requestCode == Pair_Request && resultCode == RESULT_OK) {
+
+			Toast.makeText(this, "Paring to device", Toast.LENGTH_SHORT).show();
 		}
 
 	}
@@ -240,8 +232,10 @@ public class MainActivity extends Activity implements OnItemClickListener {
 		super.onStop();
 
 		unregisterReceiver(mBluetoothReceiver);
-		connectedThread.cancel();
-		connectThread.cancel();
+		if (connectedThread != null)
+			connectedThread.cancel();
+		if (connectThread != null)
+			connectThread.cancel();
 
 	}
 
@@ -268,7 +262,8 @@ public class MainActivity extends Activity implements OnItemClickListener {
 	}
 
 	@Override
-	public void onItemClick(AdapterView<?> arg0, View arg1, int deviceIndex, long arg3) {
+	public void onItemClick(AdapterView<?> arg0, View arg1, int deviceIndex,
+			long arg3) {
 
 		if (mBluetoothAdapter.isDiscovering()) {
 
@@ -276,49 +271,49 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 		}
 
-		if (mArrayAdapter.getItem(deviceIndex).getDevice().getBondState()==BluetoothDevice.BOND_BONDED) {
+		if (mArrayAdapter.getItem(deviceIndex).getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
 			Log.e(STORAGE_SERVICE, "PAIRED");
 
-			
 			Toast.makeText(this, "Conneting to paired device.",
 					Toast.LENGTH_SHORT).show();
 
-			connectThread = new ConnectThread(mArrayAdapter
-					.getItem(deviceIndex).getDevice());
+			connectThread = new ConnectThread(mArrayAdapter.getItem(deviceIndex).getDevice());
 
 			connectThread.start();
 
 		} else {
-			
+
 			Log.e(STORAGE_SERVICE, "NOT PAIRED");
-			
-			
-//			   Intent btSettingsIntent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
-//			    startActivityForResult(btSettingsIntent, Pair_Request);
-			
-			Toast.makeText(this, "Device not pared. You should pair before trying to connect.", Toast.LENGTH_SHORT)
-					.show();
-			
-			//while(mArrayAdapter.getItem(arg2).getDevice().getBondState() != BluetoothDevice.BOND_BONDED){}
-			
-//			Toast.makeText(this, "device paired", Toast.LENGTH_SHORT)
-//			.show();
-//				ConnectThread connectThread = new ConnectThread(mArrayAdapter.getItem(deviceIndex).getDevice());
-//
-//				connectThread.run();
+
+			// Intent btSettingsIntent = new
+			// Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+			// startActivityForResult(btSettingsIntent, Pair_Request);
+
+			Toast.makeText(
+					this,
+					"Device not pared. You should pair before trying to connect.",
+					Toast.LENGTH_SHORT).show();
+
+				connectThread = new ConnectThread(mArrayAdapter
+					.getItem(deviceIndex).getDevice());
+
+			connectThread.run();
 		}
 	}
 
-	//GOOGLE DEVELOPERS
+	// GOOGLE DEVELOPERS
 	private class ConnectThread extends Thread {
 
-		private final UUID MY_UUID = UUID
-				.fromString("00001101-0000-1000-8000-00805F9B34FB"); 
-//        UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"); //Standard SerialPortService ID
+		// private final UUID MY_UUID = UUID
+		// .fromString("00001101-0000-1000-8000-00805F9B34FB");
+		// UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
+		// //Standard SerialPortService ID
 
-		
-//		private final UUID MY_UUID = UUID
-//				.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66"); // USE FOR CONNECTING PEER DEVICES
+		private final UUID MY_UUID = UUID
+				.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66"); // USE FOR
+																		// CONNECTING
+																		// PEER
+																		// DEVICES
 
 		private final BluetoothSocket mmSocket;
 		private final BluetoothDevice mmDevice;
@@ -341,15 +336,16 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 		public void run() {
 			// Cancel discovery because it will slow down the connection
-			
+
 			Log.e(STORAGE_SERVICE, "RUN CONNECT THREAD");
 
 			try {
 				// Connect the device through the socket. This will block
 				// until it succeeds or throws an exception
 				mmSocket.connect();
-				
-				Log.e(STORAGE_SERVICE, "SOCKET CONNECTED: "+mmSocket.isConnected());
+
+				// Log.e(STORAGE_SERVICE,
+				// "SOCKET CONNECTED: "+mmSocket.isConnected());
 
 			} catch (IOException connectException) {
 				// Unable to connect; close the socket and get out
@@ -364,14 +360,19 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			manageConnectedSocket(mmSocket);
 			Log.d(CONNECTIVITY_SERVICE, "Enviar msg");
 
+			connectedThread = new ConnectedThread(mmSocket);
+			connectedThread.start();
+			
 			mHandler.obtainMessage(CONNECTED, mmSocket).sendToTarget();
 			Log.d(CONNECTIVITY_SERVICE, "Enviei msg");
+			
+			
 
 		}
 
 		private void manageConnectedSocket(BluetoothSocket mmSocket) {
 			// TODO Auto-generated method stub
-			//DO SOMETHING
+			// DO SOMETHING
 		}
 
 		/** Will cancel an in-progress connection, and close the socket */
