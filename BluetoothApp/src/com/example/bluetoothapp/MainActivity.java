@@ -54,6 +54,8 @@ public class MainActivity extends Activity implements OnItemClickListener {
 	private static final int MESSAGE_READ = 5;
 	
 	private int Pair_Request=6;
+	ConnectThread connectThread;
+	ConnectedThread connectedThread;
 
 
 	Handler mHandler = new Handler(new Handler.Callback() {
@@ -65,7 +67,7 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			if (msg.what == (CONNECTED)) {
 
 				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
-				ConnectedThread connectedThread = new ConnectedThread((BluetoothSocket) msg.obj);
+				connectedThread = new ConnectedThread((BluetoothSocket) msg.obj);
 				connectedThread.start();
 
 				Toast.makeText(getApplicationContext(), "Handler",
@@ -238,6 +240,8 @@ public class MainActivity extends Activity implements OnItemClickListener {
 		super.onStop();
 
 		unregisterReceiver(mBluetoothReceiver);
+		connectedThread.cancel();
+		connectThread.cancel();
 
 	}
 
@@ -279,7 +283,7 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			Toast.makeText(this, "Conneting to paired device.",
 					Toast.LENGTH_SHORT).show();
 
-			ConnectThread connectThread = new ConnectThread(mArrayAdapter
+			connectThread = new ConnectThread(mArrayAdapter
 					.getItem(deviceIndex).getDevice());
 
 			connectThread.start();
@@ -305,6 +309,7 @@ public class MainActivity extends Activity implements OnItemClickListener {
 		}
 	}
 
+	//GOOGLE DEVELOPERS
 	private class ConnectThread extends Thread {
 
 		private final UUID MY_UUID = UUID
@@ -313,7 +318,7 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 		
 //		private final UUID MY_UUID = UUID
-//				.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
+//				.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66"); // USE FOR CONNECTING PEER DEVICES
 
 		private final BluetoothSocket mmSocket;
 		private final BluetoothDevice mmDevice;
@@ -328,7 +333,7 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			try {
 				// MY_UUID is the app's UUID string, also used by the server
 				// code
-				tmp = device.createRfcommSocketToServiceRecord(MY_UUID);
+				tmp = mmDevice.createRfcommSocketToServiceRecord(MY_UUID);
 			} catch (IOException e) {
 			}
 			mmSocket = tmp;
@@ -366,7 +371,7 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 		private void manageConnectedSocket(BluetoothSocket mmSocket) {
 			// TODO Auto-generated method stub
-
+			//DO SOMETHING
 		}
 
 		/** Will cancel an in-progress connection, and close the socket */
