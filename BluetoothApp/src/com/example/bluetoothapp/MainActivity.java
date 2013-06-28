@@ -289,37 +289,19 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			Log.e(STORAGE_SERVICE, "NOT PAIRED");
 			
 			
-			   Intent btSettingsIntent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
-			    startActivityForResult(btSettingsIntent, Pair_Request);
+//			   Intent btSettingsIntent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+//			    startActivityForResult(btSettingsIntent, Pair_Request);
 			
-			Toast.makeText(this, "Device not pared.", Toast.LENGTH_SHORT)
+			Toast.makeText(this, "Device not pared. You should pair before trying to connect.", Toast.LENGTH_SHORT)
 					.show();
 			
 			//while(mArrayAdapter.getItem(arg2).getDevice().getBondState() != BluetoothDevice.BOND_BONDED){}
 			
-			Toast.makeText(this, "device paired", Toast.LENGTH_SHORT)
-			.show();
-				ConnectThread connectThread = new ConnectThread(mArrayAdapter.getItem(deviceIndex).getDevice());
-
-				connectThread.run();
-
-//			 String ACTION_PAIRING_REQUEST = "android.bluetooth.device.action.PAIRING_REQUEST";
-//		        Intent intent = new Intent(ACTION_PAIRING_REQUEST);
-//		        String EXTRA_DEVICE = "android.bluetooth.device.extra.DEVICE";
-//		        intent.putExtra(EXTRA_DEVICE, mArrayAdapter
-//						.getItem(arg2).getDevice());
-//		        String EXTRA_PAIRING_VARIANT = "android.bluetooth.device.extra.PAIRING_VARIANT";
-//		        int PAIRING_VARIANT_PIN = 0;
-//		        intent.putExtra(EXTRA_PAIRING_VARIANT, PAIRING_VARIANT_PIN);
-//		        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//		        startActivity(intent);
-			
-//			Intent intent = new Intent(BluetoothDevice.ACTION_PAIRING_REQUEST);
-//			intent.putExtra(EXTRA_DEVICE, device);
-//			int PAIRING_VARIANT_PIN = 272;
-//			intent.putExtra(BluetoothDevice.EXTRA_PAIRING_VARIANT, PAIRING_VARIANT_PIN);
-//			sendBroadcast(intent);
-
+//			Toast.makeText(this, "device paired", Toast.LENGTH_SHORT)
+//			.show();
+//				ConnectThread connectThread = new ConnectThread(mArrayAdapter.getItem(deviceIndex).getDevice());
+//
+//				connectThread.run();
 		}
 	}
 
