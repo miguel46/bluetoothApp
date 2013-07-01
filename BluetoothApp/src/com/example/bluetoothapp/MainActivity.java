@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
-import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -18,6 +17,8 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -29,7 +30,8 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements OnItemClickListener {
+public class MainActivity extends FragmentActivity implements
+		OnItemClickListener {
 
 	BluetoothAdapter mBluetoothAdapter;
 	static final int REQUEST_ENABLE_BT = 1;
@@ -65,7 +67,6 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			if (msg.what == (CONNECTED)) {
 
 				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
-				
 
 				Toast.makeText(getApplicationContext(), "Handler",
 						Toast.LENGTH_SHORT).show();
@@ -73,11 +74,6 @@ public class MainActivity extends Activity implements OnItemClickListener {
 				String s = "Connected, welcome!";
 
 				connectedThread.write(s.getBytes());
-
-				// START THE CHAT
-//				Intent intent = new Intent(getApplicationContext(), Chat.class);
-//
-//				startActivity(intent);
 
 				return true;
 			} else if (msg.what == MESSAGE_READ) {
@@ -89,11 +85,15 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 		};
 	});
+	private String discoverDeviceTag = "DISCOVER_DEVICE";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
 		setContentView(R.layout.activity_main);
+
+		menuAdapter();
 
 		discover = (Button) findViewById(R.id.btn_Discover);
 		listView = (ListView) findViewById(R.id.listView1);
@@ -119,9 +119,6 @@ public class MainActivity extends Activity implements OnItemClickListener {
 					// Get the BluetoothDevice object from the Intent
 					BluetoothDevice device = intent
 							.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-
-					// mArrayAdapter.add(device.getName() + "\n"+
-					// device.getAddress());
 
 					if (devicesList.size() > 0)
 						for (PairedDevice pDevice : pairedDevices) {
@@ -192,6 +189,20 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 	}
 
+	private void menuAdapter() {
+		if (findViewById(R.id.fragment_container) != null) {
+
+			Fragment discoverDevice = new DiscoverDevice();
+
+			getSupportFragmentManager()
+					.beginTransaction()
+					.add(R.id.fragment_container, discoverDevice,
+							discoverDeviceTag).commit();
+
+		}
+
+	}
+
 	@Override
 	protected void onResume() {
 		super.onResume();
@@ -230,6 +241,12 @@ public class MainActivity extends Activity implements OnItemClickListener {
 	@Override
 	public void onStop() {
 		super.onStop();
+
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
 
 		unregisterReceiver(mBluetoothReceiver);
 		if (connectedThread != null)
@@ -277,7 +294,8 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			Toast.makeText(this, "Conneting to paired device.",
 					Toast.LENGTH_SHORT).show();
 
-			connectThread = new ConnectThread(mArrayAdapter.getItem(deviceIndex).getDevice());
+			connectThread = new ConnectThread(mArrayAdapter
+					.getItem(deviceIndex).getDevice());
 
 			connectThread.start();
 
@@ -285,16 +303,12 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 			Log.e(STORAGE_SERVICE, "NOT PAIRED");
 
-			// Intent btSettingsIntent = new
-			// Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
-			// startActivityForResult(btSettingsIntent, Pair_Request);
-
 			Toast.makeText(
 					this,
 					"Device not pared. You should pair before trying to connect.",
 					Toast.LENGTH_SHORT).show();
 
-				connectThread = new ConnectThread(mArrayAdapter
+			connectThread = new ConnectThread(mArrayAdapter
 					.getItem(deviceIndex).getDevice());
 
 			connectThread.run();
@@ -362,11 +376,9 @@ public class MainActivity extends Activity implements OnItemClickListener {
 
 			connectedThread = new ConnectedThread(mmSocket);
 			connectedThread.start();
-			
+
 			mHandler.obtainMessage(CONNECTED, mmSocket).sendToTarget();
 			Log.d(CONNECTIVITY_SERVICE, "Enviei msg");
-			
-			
 
 		}
 
