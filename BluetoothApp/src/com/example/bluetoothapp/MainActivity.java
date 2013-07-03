@@ -19,6 +19,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -28,10 +29,14 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.bluetoothapp.Chat.onChatActivityListener;
+import com.example.bluetoothapp.DiscoverDevice.OnDiscoverDeviceListener;
+
 public class MainActivity extends FragmentActivity implements
-		OnItemClickListener {
+		OnItemClickListener, OnDiscoverDeviceListener, onChatActivityListener {
 
 	BluetoothAdapter mBluetoothAdapter;
 	static final int REQUEST_ENABLE_BT = 1;
@@ -58,6 +63,8 @@ public class MainActivity extends FragmentActivity implements
 	ConnectThread connectThread;
 	ConnectedThread connectedThread;
 
+	TextView chatTextView;
+
 	Handler mHandler = new Handler(new Handler.Callback() {
 
 		@Override
@@ -78,6 +85,11 @@ public class MainActivity extends FragmentActivity implements
 				return true;
 			} else if (msg.what == MESSAGE_READ) {
 
+				byte[] readBuf = (byte[]) msg.obj;
+				// construct a string from the valid bytes in the buffer
+				String readMessage = new String(readBuf, 0, msg.arg1);
+				chatTextView.append("\n" + readMessage);
+
 				return true;
 
 			}
@@ -85,6 +97,9 @@ public class MainActivity extends FragmentActivity implements
 
 		};
 	});
+
+	Handler chatHandler;
+
 	private String discoverDeviceTag = "DISCOVER_DEVICE";
 
 	@Override
@@ -93,7 +108,43 @@ public class MainActivity extends FragmentActivity implements
 
 		setContentView(R.layout.activity_main);
 
+		chatHandler = new Handler();
+
 		menuAdapter();
+
+		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+		if (mBluetoothAdapter == null) {
+			// Device does not support Bluetooth
+		} else {
+			if (!mBluetoothAdapter.isEnabled()) {
+				Intent enableBtIntent = new Intent(
+						BluetoothAdapter.ACTION_REQUEST_ENABLE);
+				startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+
+			}
+
+		}
+
+	}
+
+	private void menuAdapter() {
+		if (findViewById(R.id.fragment_container) != null) {
+
+			Fragment discoverDevice = new DiscoverDevice();
+
+			getSupportFragmentManager()
+					.beginTransaction()
+					.add(R.id.fragment_container, discoverDevice,
+							discoverDeviceTag).commit();
+
+			// wait for the listener in discover device to initiate the
+			// procedure
+		}
+
+	}
+
+	private void discoverDevicesInit() {
 
 		discover = (Button) findViewById(R.id.btn_Discover);
 		listView = (ListView) findViewById(R.id.listView1);
@@ -106,6 +157,9 @@ public class MainActivity extends FragmentActivity implements
 
 		pairedDevices = new ArrayList<PairedDevice>();
 
+	}
+
+	private void registBroadcastReceivers() {
 		// Register the BroadcastReceiver
 		IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
 
@@ -172,35 +226,6 @@ public class MainActivity extends FragmentActivity implements
 		filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
 		registerReceiver(mBluetoothReceiver, filter);
 
-		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-		if (mBluetoothAdapter == null) {
-			// Device does not support Bluetooth
-		} else {
-			if (!mBluetoothAdapter.isEnabled()) {
-				Intent enableBtIntent = new Intent(
-						BluetoothAdapter.ACTION_REQUEST_ENABLE);
-				startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-
-			}
-
-			getPairedDevices();
-
-		}
-
-	}
-
-	private void menuAdapter() {
-		if (findViewById(R.id.fragment_container) != null) {
-
-			Fragment discoverDevice = new DiscoverDevice();
-
-			getSupportFragmentManager()
-					.beginTransaction()
-					.add(R.id.fragment_container, discoverDevice,
-							discoverDeviceTag).commit();
-
-		}
-
 	}
 
 	@Override
@@ -248,6 +273,8 @@ public class MainActivity extends FragmentActivity implements
 	protected void onDestroy() {
 		super.onDestroy();
 
+		Log.e(TEXT_SERVICES_MANAGER_SERVICE, "ON DETROY MAIN ACTIVITY");
+
 		unregisterReceiver(mBluetoothReceiver);
 		if (connectedThread != null)
 			connectedThread.cancel();
@@ -287,6 +314,17 @@ public class MainActivity extends FragmentActivity implements
 			mBluetoothAdapter.cancelDiscovery();
 
 		}
+		unregisterReceiver(mBluetoothReceiver);
+
+		Fragment chatFragment = new Chat();
+
+		FragmentTransaction fragmentTransaction = getSupportFragmentManager()
+				.beginTransaction();
+
+		fragmentTransaction.replace(R.id.fragment_container, chatFragment);
+		fragmentTransaction.addToBackStack(null);
+
+		fragmentTransaction.commit();
 
 		if (mArrayAdapter.getItem(deviceIndex).getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
 			Log.e(STORAGE_SERVICE, "PAIRED");
@@ -428,9 +466,11 @@ public class MainActivity extends FragmentActivity implements
 					buffer = new byte[1024];
 					// Read from the InputStream
 					bytes = mmInStream.read(buffer);
+
 					// Send the obtained bytes to the UI activity
 					mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer)
 							.sendToTarget();
+
 				} catch (IOException e) {
 					break;
 				}
@@ -452,6 +492,20 @@ public class MainActivity extends FragmentActivity implements
 			} catch (IOException e) {
 			}
 		}
+	}
+
+	@Override
+	public void onDiscoverDeviceActivityCreated() {
+		discoverDevicesInit();
+		registBroadcastReceivers();
+		getPairedDevices();
+
+	}
+
+	@Override
+	public void onChatActivityCreated() {
+		chatTextView = (TextView) findViewById(R.id.txtView_Chat);
+
 	}
 
 }

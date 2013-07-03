@@ -3,15 +3,11 @@
  */
 package com.example.bluetoothapp;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.telephony.PhoneNumberUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
-import android.widget.Toast;
 
 /**
  * @author Luis Miguel
@@ -19,10 +15,19 @@ import android.widget.Toast;
  */
 public class Chat extends Fragment {
 
+	onChatActivityListener onActivityListener;
+
+	public interface onChatActivityListener {
+
+		void onChatActivityCreated();
+
+	}
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		onActivityListener = (onChatActivityListener) getActivity();
 	}
 
 	@Override
@@ -36,20 +41,13 @@ public class Chat extends Fragment {
 	public void onActivityCreated(Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
 
-		Bundle bundle = this.getArguments();
-		
-	}
-
-	@Override
-	public void onStart() {
-		super.onStart();
+		onActivityListener.onChatActivityCreated();
 
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
-		onStop();
 
 	}
 

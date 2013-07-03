@@ -8,9 +8,17 @@ import android.view.ViewGroup;
 
 public class DiscoverDevice extends Fragment {
 
+	OnDiscoverDeviceListener onDiscoverDeviceListener;
+
+	public interface OnDiscoverDeviceListener {
+		void onDiscoverDeviceActivityCreated();
+	}
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		onDiscoverDeviceListener = (OnDiscoverDeviceListener) getActivity();
 
 	}
 
@@ -25,20 +33,13 @@ public class DiscoverDevice extends Fragment {
 	public void onActivityCreated(Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
 
-		Bundle bundle = this.getArguments();
-
-	}
-
-	@Override
-	public void onStart() {
-		super.onStart();
+		onDiscoverDeviceListener.onDiscoverDeviceActivityCreated();
 
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
-		onStop();
 
 	}
 

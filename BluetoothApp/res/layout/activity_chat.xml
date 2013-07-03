@@ -12,6 +12,15 @@
         android:stackFromBottom="true"
         android:transcriptMode="alwaysScroll" />
 
+    
+     <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#dedede" 
+        >
+        <!-- 
+    
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -33,7 +42,24 @@
             android:id="@+id/button1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send" />
+            android:text="Send" /> -->
+
+         <EditText
+             android:id="@+id/edit_text_out"
+             android:layout_width="wrap_content"
+             android:layout_height="40dp"
+             android:background="#ffffff"
+             android:ems="10" >
+
+             <requestFocus />
+         </EditText>
+
+        <Button
+            android:id="@+id/button_send"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="send" />
+
     </LinearLayout>
 
 </LinearLayout>
