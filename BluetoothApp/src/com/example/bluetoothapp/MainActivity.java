@@ -20,6 +20,7 @@ import android.os.Message;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -64,6 +65,8 @@ public class MainActivity extends FragmentActivity implements
 	ConnectedThread connectedThread;
 
 	TextView chatTextView;
+	TextView inputTextView;
+
 
 	Handler mHandler = new Handler(new Handler.Callback() {
 
@@ -87,17 +90,17 @@ public class MainActivity extends FragmentActivity implements
 
 				byte[] readBuf = (byte[]) msg.obj;
 				// construct a string from the valid bytes in the buffer
-				String readMessage = new String(readBuf, 0, msg.arg1);
-//				for (int i = 0; i < readBuf.length; i++) {
-////					chatTextView.append(" "+Integer.toHexString(0xFF, readBuf[i]));
-//				}
-				chatTextView.append(readMessage+"");
+				// String readMessage = new String(readBuf, 0, msg.arg1);
+				// for (int i = 0; i < readBuf.length; i++) {
+				// // chatTextView.append(" "+Integer.toHexString(0xFF,
+				// readBuf[i]));
+				// }
+
+				// chatTextView.append(readMessage+" ");
+				chatTextView.append(bytes2String(readBuf, msg.arg1) + "");
 
 				chatTextView.append("\n");
-				chatTextView.append("\n");
-				
-				
-				
+
 				return true;
 
 			}
@@ -105,6 +108,17 @@ public class MainActivity extends FragmentActivity implements
 
 		};
 	});
+
+	public static String bytes2String(byte[] b, int count) {
+		StringBuilder ret = new StringBuilder();
+		// String str ="";
+		for (int i = 0; i < count; i++) {
+			String myInt = Integer.toHexString((int) (b[i] & 0xFF));
+			// String myInt = Integer.toString((int)(b[i] & 0xFF));
+			ret.append(myInt + " ");
+		}
+		return ret.toString();
+	}
 
 	Handler chatHandler;
 
@@ -296,6 +310,13 @@ public class MainActivity extends FragmentActivity implements
 		startDiscovery();
 
 	}
+	
+	public void onCLickSendButton(View v) {
+
+		connectedThread.write(inputTextView.getText().toString().getBytes());
+		inputTextView.setText("");
+
+	}
 
 	public void getPairedDevices() {
 
@@ -341,11 +362,11 @@ public class MainActivity extends FragmentActivity implements
 					Toast.LENGTH_SHORT).show();
 
 			String address = "00:11:11:28:09:45";
-//					"XX:XX:XX:XX:XX:XX";
+			// "XX:XX:XX:XX:XX:XX";
 			BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-			
-//			connectThread = new ConnectThread(mArrayAdapter
-//					.getItem(deviceIndex).getDevice());
+
+			// connectThread = new ConnectThread(mArrayAdapter
+			// .getItem(deviceIndex).getDevice());
 			connectThread = new ConnectThread(device);
 
 			connectThread.start();
@@ -369,16 +390,16 @@ public class MainActivity extends FragmentActivity implements
 	// GOOGLE DEVELOPERS
 	private class ConnectThread extends Thread {
 
-		 private final UUID MY_UUID = UUID
-		 .fromString("00001101-0000-1000-8000-00805F9B34FB");
+		private final UUID MY_UUID = UUID
+				.fromString("00001101-0000-1000-8000-00805F9B34FB");
 		// UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
 		// //Standard SerialPortService ID
 
-//		private final UUID MY_UUID = UUID
-//				.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66"); // USE FOR
-																		// CONNECTING
-																		// PEER
-																		// DEVICES
+		// private final UUID MY_UUID = UUID
+		// .fromString("fa87c0d0-afac-11de-8a39-0800200c9a66"); // USE FOR
+		// CONNECTING
+		// PEER
+		// DEVICES
 
 		private final BluetoothSocket mmSocket;
 		private final BluetoothDevice mmDevice;
@@ -389,11 +410,8 @@ public class MainActivity extends FragmentActivity implements
 			BluetoothSocket tmp = null;
 			mmDevice = device;
 
-			
-			
-			//BLUETOOTH ADDRESS: 11:11:280945
+			// BLUETOOTH ADDRESS: 11:11:280945
 
-			
 			// Get a BluetoothSocket to connect with the given BluetoothDevice
 			try {
 				// MY_UUID is the app's UUID string, also used by the server
@@ -481,7 +499,8 @@ public class MainActivity extends FragmentActivity implements
 			// Keep listening to the InputStream until an exception occurs
 			while (true) {
 				try {
-					buffer = new byte[1024];
+
+					buffer = new byte[mmInStream.available()];
 					// Read from the InputStream
 					bytes = mmInStream.read(buffer);
 
@@ -523,6 +542,8 @@ public class MainActivity extends FragmentActivity implements
 	@Override
 	public void onChatActivityCreated() {
 		chatTextView = (TextView) findViewById(R.id.txtView_Chat);
+		chatTextView.setMovementMethod(new ScrollingMovementMethod());
+		inputTextView = (TextView) findViewById(R.id.edit_text_out);
 
 	}
 
