@@ -20,6 +20,7 @@ public class Chat extends Fragment {
 	public interface onChatActivityListener {
 
 		void onChatActivityCreated();
+		void onChatActivityDestroyed();
 
 	}
 
@@ -60,6 +61,13 @@ public class Chat extends Fragment {
 	public void onDestroyView() {
 		super.onDestroyView();
 
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		
+		onActivityListener.onChatActivityDestroyed();
 	}
 
 }

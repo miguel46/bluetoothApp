@@ -30,6 +30,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -67,58 +68,7 @@ public class MainActivity extends FragmentActivity implements
 	TextView chatTextView;
 	TextView inputTextView;
 
-
-	Handler mHandler = new Handler(new Handler.Callback() {
-
-		@Override
-		public boolean handleMessage(Message msg) {
-			Log.i("CONNECT", "ENTROU AQUI");
-
-			if (msg.what == (CONNECTED)) {
-
-				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
-
-				Toast.makeText(getApplicationContext(), "Handler",
-						Toast.LENGTH_SHORT).show();
-
-				String s = "Connected, welcome!";
-
-				connectedThread.write(s.getBytes());
-
-				return true;
-			} else if (msg.what == MESSAGE_READ) {
-
-				byte[] readBuf = (byte[]) msg.obj;
-				// construct a string from the valid bytes in the buffer
-				// String readMessage = new String(readBuf, 0, msg.arg1);
-				// for (int i = 0; i < readBuf.length; i++) {
-				// // chatTextView.append(" "+Integer.toHexString(0xFF,
-				// readBuf[i]));
-				// }
-
-				// chatTextView.append(readMessage+" ");
-				chatTextView.append(bytes2String(readBuf, msg.arg1) + "");
-
-				chatTextView.append("\n");
-
-				return true;
-
-			}
-			return false;
-
-		};
-	});
-
-	public static String bytes2String(byte[] b, int count) {
-		StringBuilder ret = new StringBuilder();
-		// String str ="";
-		for (int i = 0; i < count; i++) {
-			String myInt = Integer.toHexString((int) (b[i] & 0xFF));
-			// String myInt = Integer.toString((int)(b[i] & 0xFF));
-			ret.append(myInt + " ");
-		}
-		return ret.toString();
-	}
+	
 
 	Handler chatHandler;
 
@@ -174,7 +124,7 @@ public class MainActivity extends FragmentActivity implements
 		progressBar = (ProgressBar) findViewById(R.id.progressBar1);
 
 		mArrayAdapter = new ArrayAdapter<PairedDevice>(this,
-				android.R.layout.simple_list_item_checked, 0);
+				android.R.layout.simple_list_item_1, 0);
 		listView.setAdapter(mArrayAdapter);
 
 		pairedDevices = new ArrayList<PairedDevice>();
@@ -304,13 +254,79 @@ public class MainActivity extends FragmentActivity implements
 			connectThread.cancel();
 
 	}
+	
+	Handler mHandler = new Handler(new Handler.Callback() {
+
+		@Override
+		public boolean handleMessage(Message msg) {
+			Log.i("CONNECT", "ENTROU AQUI");
+
+			if (msg.what == (CONNECTED)) {
+
+				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
+
+				Toast.makeText(getApplicationContext(), "Handler",
+						Toast.LENGTH_SHORT).show();
+
+				String s = "Connected, welcome!";
+
+				connectedThread.write(s.getBytes());
+
+				return true;
+			} else if (msg.what == MESSAGE_READ) {
+
+				byte[] readBuf = (byte[]) msg.obj;
+				// construct a string from the valid bytes in the buffer
+				// String readMessage = new String(readBuf, 0, msg.arg1);
+				// for (int i = 0; i < readBuf.length; i++) {
+				// // chatTextView.append(" "+Integer.toHexString(0xFF,
+				// readBuf[i]));
+				// }
+
+				// chatTextView.append(readMessage+" ");
+				chatTextView.append(bytes2String(readBuf, msg.arg1) + "");
+
+				chatTextView.append("\n");
+
+				scrollDown();
+
+				return true;
+
+			}
+			return false;
+
+		};
+	});
+
+	private void scrollDown() {
+		if (getSupportFragmentManager().findFragmentByTag("chatFragment") != null
+				&& getSupportFragmentManager()
+						.findFragmentByTag("chatFragment").isVisible()) {
+			ScrollView scrollView = (ScrollView) findViewById(R.id.scroller);
+
+			scrollView.smoothScrollTo(0, chatTextView.getBottom());
+
+		}
+	}
+
+	public static String bytes2String(byte[] b, int count) {
+		StringBuilder hexData = new StringBuilder();
+
+		for (int i = 0; i < count; i++) {
+			String data = Integer.toHexString((int) (b[i] & 0xFF));
+
+			hexData.append(data + " ");
+		}
+		return hexData.toString();
+	}
+	
 
 	public void onClickBtnDiscover(View v) {
 
 		startDiscovery();
 
 	}
-	
+
 	public void onCLickSendButton(View v) {
 
 		connectedThread.write(inputTextView.getText().toString().getBytes());
@@ -350,7 +366,8 @@ public class MainActivity extends FragmentActivity implements
 		FragmentTransaction fragmentTransaction = getSupportFragmentManager()
 				.beginTransaction();
 
-		fragmentTransaction.replace(R.id.fragment_container, chatFragment);
+		fragmentTransaction.replace(R.id.fragment_container, chatFragment,
+				"chatFragment");
 		fragmentTransaction.addToBackStack(null);
 
 		fragmentTransaction.commit();
@@ -362,7 +379,7 @@ public class MainActivity extends FragmentActivity implements
 					Toast.LENGTH_SHORT).show();
 
 			String address = "00:11:11:28:09:45";
-			// "XX:XX:XX:XX:XX:XX";
+
 			BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
 
 			// connectThread = new ConnectThread(mArrayAdapter
@@ -474,11 +491,13 @@ public class MainActivity extends FragmentActivity implements
 		private final BluetoothSocket mmSocket;
 		private final InputStream mmInStream;
 		private final OutputStream mmOutStream;
+		boolean isToStop;
 
 		public ConnectedThread(BluetoothSocket socket) {
 			mmSocket = socket;
 			InputStream tmpIn = null;
 			OutputStream tmpOut = null;
+			isToStop = false;
 
 			// Get the input and output streams, using temp objects because
 			// member streams are final
@@ -486,6 +505,7 @@ public class MainActivity extends FragmentActivity implements
 				tmpIn = socket.getInputStream();
 				tmpOut = socket.getOutputStream();
 			} catch (IOException e) {
+				Log.e("ConnectedThread", "  ");
 			}
 
 			mmInStream = tmpIn;
@@ -497,7 +517,7 @@ public class MainActivity extends FragmentActivity implements
 			int bytes; // bytes returned from read()
 
 			// Keep listening to the InputStream until an exception occurs
-			while (true) {
+			while (!isToStop) {
 				try {
 
 					buffer = new byte[mmInStream.available()];
@@ -512,6 +532,12 @@ public class MainActivity extends FragmentActivity implements
 					break;
 				}
 			}
+
+			// Closes this socket
+			cancel();
+
+			Log.d(CONNECTIVITY_SERVICE, "CONNECTED THREAD TERMINATED");
+
 		}
 
 		/* Call this from the main activity to send data to the remote device */
@@ -527,6 +553,7 @@ public class MainActivity extends FragmentActivity implements
 			try {
 				mmSocket.close();
 			} catch (IOException e) {
+				Log.e("ConnectedThread", "Error on close");
 			}
 		}
 	}
@@ -544,6 +571,14 @@ public class MainActivity extends FragmentActivity implements
 		chatTextView = (TextView) findViewById(R.id.txtView_Chat);
 		chatTextView.setMovementMethod(new ScrollingMovementMethod());
 		inputTextView = (TextView) findViewById(R.id.edit_text_out);
+
+	}
+
+	@Override
+	public void onChatActivityDestroyed() {
+		connectedThread.isToStop = true;
+
+		Log.e(CONNECTIVITY_SERVICE, "CHAT FRAGMENT DESTROYED");
 
 	}
 
