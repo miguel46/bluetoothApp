@@ -259,13 +259,12 @@ public class MainActivity extends FragmentActivity implements
 
 		@Override
 		public boolean handleMessage(Message msg) {
-			Log.i("CONNECT", "ENTROU AQUI");
 
 			if (msg.what == (CONNECTED)) {
 
 				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
 
-				Toast.makeText(getApplicationContext(), "Handler",
+				Toast.makeText(getApplicationContext(), "Connection Established",
 						Toast.LENGTH_SHORT).show();
 
 				String s = "Connected, welcome!";
@@ -274,6 +273,8 @@ public class MainActivity extends FragmentActivity implements
 
 				return true;
 			} else if (msg.what == MESSAGE_READ) {
+				
+				Log.i("mHandler_", "RECEIVED DATA");
 
 				byte[] readBuf = (byte[]) msg.obj;
 				// construct a string from the valid bytes in the buffer
@@ -283,7 +284,6 @@ public class MainActivity extends FragmentActivity implements
 				// readBuf[i]));
 				// }
 
-				// chatTextView.append(readMessage+" ");
 				chatTextView.append(bytes2String(readBuf, msg.arg1) + "");
 
 				chatTextView.append("\n");
