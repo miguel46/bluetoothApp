@@ -42,37 +42,28 @@ public class MainActivity extends FragmentActivity implements
 
 	BluetoothAdapter mBluetoothAdapter;
 	static final int REQUEST_ENABLE_BT = 1;
-
 	static final int CONNECTED = 2;
+	private static final int MESSAGE_READ = 5;
+	private int Pair_Request = 6;
+	private String discoverDeviceTag = "DISCOVER_DEVICE";
 
 	Button discover;
-
 	ListView listView;
+	ProgressBar progressBar;
+	TextView chatTextView;
+	TextView inputTextView;
 
 	Set<BluetoothDevice> devicesList;
-
 	ArrayList<PairedDevice> pairedDevices;
-
 	ArrayAdapter<PairedDevice> mArrayAdapter;
 
 	IntentFilter filter;
 	BroadcastReceiver mBluetoothReceiver;
 
-	ProgressBar progressBar;
-	private static final int MESSAGE_READ = 5;
-
-	private int Pair_Request = 6;
 	ConnectThread connectThread;
 	ConnectedThread connectedThread;
 
-	TextView chatTextView;
-	TextView inputTextView;
-
-	
-
 	Handler chatHandler;
-
-	private String discoverDeviceTag = "DISCOVER_DEVICE";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +73,8 @@ public class MainActivity extends FragmentActivity implements
 
 		chatHandler = new Handler();
 
+		// INITIATES THE LAYOUT, FIRST WILL BE THE LIST TO SELECT THE DEVICE,
+		// AFTER CLICK ON THE DEVICE IT WILL APPEAR THE CHAT LAYOUT
 		menuAdapter();
 
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -90,19 +83,164 @@ public class MainActivity extends FragmentActivity implements
 			// Device does not support Bluetooth
 		} else {
 			if (!mBluetoothAdapter.isEnabled()) {
+				// The bluetooth is enabled, if is not active
 				Intent enableBtIntent = new Intent(
 						BluetoothAdapter.ACTION_REQUEST_ENABLE);
 				startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-
 			}
+		}
+	}
 
+	@Override
+	protected void onResume() {
+		super.onResume();
+
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		// TODO Auto-generated method stub
+		super.onActivityResult(requestCode, resultCode, data);
+
+		if (resultCode == RESULT_CANCELED) {
+			Toast.makeText(this, "Without bluetooth, it will not work.",
+					Toast.LENGTH_SHORT).show();
+
+		} else if (requestCode == Pair_Request && resultCode == RESULT_OK) {
+
+			Toast.makeText(this, "Paring to device", Toast.LENGTH_SHORT).show();
 		}
 
 	}
 
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.main, menu);
+		return true;
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+	}
+
+	@Override
+	public void onStop() {
+		super.onStop();
+
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+
+		Log.e(TEXT_SERVICES_MANAGER_SERVICE, "ON DETROY MAIN ACTIVITY");
+
+		unregisterReceiver(mBluetoothReceiver);
+		if (connectedThread != null)
+			connectedThread.cancel();
+		if (connectThread != null)
+			connectThread.cancel();
+
+	}
+
+	Handler mHandler = new Handler(new Handler.Callback() {
+
+		@Override
+		public boolean handleMessage(Message msg) {
+
+			if (msg.what == (CONNECTED)) {
+
+				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
+
+				Toast.makeText(getApplicationContext(),
+						"Connection Established", Toast.LENGTH_SHORT).show();
+
+				String s = "Connected, welcome!";
+
+				connectedThread.write(s.getBytes());
+
+				return true;
+			} else if (msg.what == MESSAGE_READ) {
+
+				Log.i("mHandler_", "RECEIVED DATA");
+
+				byte[] readBuf = (byte[]) msg.obj;
+				// construct a string from the valid bytes in the buffer
+				// String readMessage = new String(readBuf, 0, msg.arg1);
+				// for (int i = 0; i < readBuf.length; i++) {
+				// // chatTextView.append(" "+Integer.toHexString(0xFF,
+				// readBuf[i]));
+				// }
+
+				chatTextView.append(bytes2String(readBuf, msg.arg1) + "");
+
+				chatTextView.append("\n");
+
+				scrollDown();
+
+				return true;
+
+			}
+			return false;
+
+		};
+	});
+	
+	/**
+	 * When the user clicks in the button to discover devices
+	 * @param v
+	 */
+	public void onClickBtnDiscover(View v) {
+
+		startDiscovery();
+
+	}
+
+	/**
+	 * When the user clicks on the chat button to send the text
+	 * @param v
+	 */
+	public void onCLickSendButton(View v) {
+
+		connectedThread.write(inputTextView.getText().toString().getBytes());
+		inputTextView.setText("");
+
+	}
+
+	@Override
+	public void onDiscoverDeviceActivityCreated() {
+		discoverDevicesInit();
+		registBroadcastReceivers();
+		getPairedDevices();
+
+	}
+
+	@Override
+	public void onChatActivityCreated() {
+		chatTextView = (TextView) findViewById(R.id.txtView_Chat);
+		chatTextView.setMovementMethod(new ScrollingMovementMethod());
+		inputTextView = (TextView) findViewById(R.id.edit_text_out);
+
+	}
+
+	@Override
+	public void onChatActivityDestroyed() {
+		// When the user ends the chat, the threads to communicate with the
+		// device are terminated
+		connectedThread.isToStop = true; // TODO a elegant method
+		//connectThread.cancel();
+		Log.e(CONNECTIVITY_SERVICE, "CHAT FRAGMENT DESTROYED");
+	}
+
+	/**
+	 * Initiates the layout when the application starts
+	 */
 	private void menuAdapter() {
 		if (findViewById(R.id.fragment_container) != null) {
 
+			// INITIATES THE LAYOUT TO SHOW THE DICOVERED DEVICES
 			Fragment discoverDevice = new DiscoverDevice();
 
 			getSupportFragmentManager()
@@ -110,12 +248,18 @@ public class MainActivity extends FragmentActivity implements
 					.add(R.id.fragment_container, discoverDevice,
 							discoverDeviceTag).commit();
 
-			// wait for the listener in discover device to initiate the
-			// procedure
 		}
-
+	}
+	
+	private void startDiscovery() {
+		mArrayAdapter.clear();
+		mBluetoothAdapter.cancelDiscovery();
+		mBluetoothAdapter.startDiscovery();
 	}
 
+	/**
+	 * Initialize the variables to discover devices
+	 */
 	private void discoverDevicesInit() {
 
 		discover = (Button) findViewById(R.id.btn_Discover);
@@ -131,6 +275,10 @@ public class MainActivity extends FragmentActivity implements
 
 	}
 
+	/**
+	 * Register the broadcast receivers, to discover devices and bluetooth
+	 * actions.
+	 */
 	private void registBroadcastReceivers() {
 		// Register the BroadcastReceiver
 		IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -199,140 +347,42 @@ public class MainActivity extends FragmentActivity implements
 		registerReceiver(mBluetoothReceiver, filter);
 
 	}
-
+	
 	@Override
-	protected void onResume() {
-		super.onResume();
+	public void onItemClick(AdapterView<?> arg0, View arg1, int deviceIndex,
+			long arg3) {
 
-	}
+		// When the item is pressed, if the discover is active it should
+		// terminate
+		if (mBluetoothAdapter.isDiscovering()) {
 
-	private void startDiscovery() {
-		mArrayAdapter.clear();
-		mBluetoothAdapter.cancelDiscovery();
-		mBluetoothAdapter.startDiscovery();
-	}
+			mBluetoothAdapter.cancelDiscovery();
 
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		// TODO Auto-generated method stub
-		super.onActivityResult(requestCode, resultCode, data);
-
-		if (resultCode == RESULT_CANCELED) {
-			Toast.makeText(this, "Without bluetooth, it will not work.",
-					Toast.LENGTH_SHORT).show();
-
-		} else if (requestCode == Pair_Request && resultCode == RESULT_OK) {
-
-			Toast.makeText(this, "Paring to device", Toast.LENGTH_SHORT).show();
 		}
 
-	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
-		return true;
-	}
-
-	@Override
-	public void onStop() {
-		super.onStop();
-
-	}
-
-	@Override
-	protected void onDestroy() {
-		super.onDestroy();
-
-		Log.e(TEXT_SERVICES_MANAGER_SERVICE, "ON DETROY MAIN ACTIVITY");
-
+		// Unregister the receiver to the discoveries and bluetooths actions
 		unregisterReceiver(mBluetoothReceiver);
-		if (connectedThread != null)
-			connectedThread.cancel();
-		if (connectThread != null)
-			connectThread.cancel();
+
+		// Initiates the chat layout to communicate with the selected device
+		Fragment chatFragment = new Chat();
+
+		// Initiates the fragment transactions
+		FragmentTransaction fragmentTransaction = getSupportFragmentManager()
+				.beginTransaction();
+
+		fragmentTransaction.replace(R.id.fragment_container, chatFragment,
+				"chatFragment");
+		fragmentTransaction.addToBackStack(null);
+
+		fragmentTransaction.commit();
+
+		// Initiates the connect thread to create a socket with the selected
+		// device
+		initiateConnectionToDevice(deviceIndex);
 
 	}
+
 	
-	Handler mHandler = new Handler(new Handler.Callback() {
-
-		@Override
-		public boolean handleMessage(Message msg) {
-
-			if (msg.what == (CONNECTED)) {
-
-				Log.d(CONNECTIVITY_SERVICE, "Entrei no connected");
-
-				Toast.makeText(getApplicationContext(), "Connection Established",
-						Toast.LENGTH_SHORT).show();
-
-				String s = "Connected, welcome!";
-
-				connectedThread.write(s.getBytes());
-
-				return true;
-			} else if (msg.what == MESSAGE_READ) {
-				
-				Log.i("mHandler_", "RECEIVED DATA");
-
-				byte[] readBuf = (byte[]) msg.obj;
-				// construct a string from the valid bytes in the buffer
-				// String readMessage = new String(readBuf, 0, msg.arg1);
-				// for (int i = 0; i < readBuf.length; i++) {
-				// // chatTextView.append(" "+Integer.toHexString(0xFF,
-				// readBuf[i]));
-				// }
-
-				chatTextView.append(bytes2String(readBuf, msg.arg1) + "");
-
-				chatTextView.append("\n");
-
-				scrollDown();
-
-				return true;
-
-			}
-			return false;
-
-		};
-	});
-
-	private void scrollDown() {
-		if (getSupportFragmentManager().findFragmentByTag("chatFragment") != null
-				&& getSupportFragmentManager()
-						.findFragmentByTag("chatFragment").isVisible()) {
-			ScrollView scrollView = (ScrollView) findViewById(R.id.scroller);
-
-			scrollView.smoothScrollTo(0, chatTextView.getBottom());
-
-		}
-	}
-
-	public static String bytes2String(byte[] b, int count) {
-		StringBuilder hexData = new StringBuilder();
-
-		for (int i = 0; i < count; i++) {
-			String data = Integer.toHexString((int) (b[i] & 0xFF));
-
-			hexData.append(data + " ");
-		}
-		return hexData.toString();
-	}
-	
-
-	public void onClickBtnDiscover(View v) {
-
-		startDiscovery();
-
-	}
-
-	public void onCLickSendButton(View v) {
-
-		connectedThread.write(inputTextView.getText().toString().getBytes());
-		inputTextView.setText("");
-
-	}
 
 	public void getPairedDevices() {
 
@@ -345,32 +395,9 @@ public class MainActivity extends FragmentActivity implements
 
 	}
 
-	@Override
-	protected void onPause() {
-		super.onPause();
-	}
+	
 
-	@Override
-	public void onItemClick(AdapterView<?> arg0, View arg1, int deviceIndex,
-			long arg3) {
-
-		if (mBluetoothAdapter.isDiscovering()) {
-
-			mBluetoothAdapter.cancelDiscovery();
-
-		}
-		unregisterReceiver(mBluetoothReceiver);
-
-		Fragment chatFragment = new Chat();
-
-		FragmentTransaction fragmentTransaction = getSupportFragmentManager()
-				.beginTransaction();
-
-		fragmentTransaction.replace(R.id.fragment_container, chatFragment,
-				"chatFragment");
-		fragmentTransaction.addToBackStack(null);
-
-		fragmentTransaction.commit();
+	private void initiateConnectionToDevice(int deviceIndex) {
 
 		if (mArrayAdapter.getItem(deviceIndex).getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
 			Log.e(STORAGE_SERVICE, "PAIRED");
@@ -402,9 +429,38 @@ public class MainActivity extends FragmentActivity implements
 
 			connectThread.run();
 		}
+
 	}
 
-	// GOOGLE DEVELOPERS
+	private void scrollDown() {
+		if (getSupportFragmentManager().findFragmentByTag("chatFragment") != null
+				&& getSupportFragmentManager()
+						.findFragmentByTag("chatFragment").isVisible()) {
+			ScrollView scrollView = (ScrollView) findViewById(R.id.scroller);
+
+			scrollView.smoothScrollTo(0, chatTextView.getBottom());
+
+		}
+	}
+
+	public static String bytes2String(byte[] b, int count) {
+		StringBuilder hexData = new StringBuilder();
+
+		for (int i = 0; i < count; i++) {
+			String data = Integer.toHexString((int) (b[i] & 0xFF));
+
+			hexData.append(data + " ");
+		}
+		return hexData.toString();
+	}
+
+	// *************************************************************************
+	// *************************************************************************
+	// ********* Thread to connect ************
+	// ********* ************
+	// *************************************************************************
+	// *************************************************************************
+
 	private class ConnectThread extends Thread {
 
 		private final UUID MY_UUID = UUID
@@ -427,8 +483,6 @@ public class MainActivity extends FragmentActivity implements
 			BluetoothSocket tmp = null;
 			mmDevice = device;
 
-			// BLUETOOTH ADDRESS: 11:11:280945
-
 			// Get a BluetoothSocket to connect with the given BluetoothDevice
 			try {
 				// MY_UUID is the app's UUID string, also used by the server
@@ -448,9 +502,6 @@ public class MainActivity extends FragmentActivity implements
 				// Connect the device through the socket. This will block
 				// until it succeeds or throws an exception
 				mmSocket.connect();
-
-				// Log.e(STORAGE_SERVICE,
-				// "SOCKET CONNECTED: "+mmSocket.isConnected());
 
 			} catch (IOException connectException) {
 				// Unable to connect; close the socket and get out
@@ -486,6 +537,13 @@ public class MainActivity extends FragmentActivity implements
 			}
 		}
 	}
+
+	// *************************************************************************
+	// *************************************************************************
+	// ********* Thread to communicate with the device ************
+	// ********* ************
+	// *************************************************************************
+	// *************************************************************************
 
 	private class ConnectedThread extends Thread {
 		private final BluetoothSocket mmSocket;
@@ -556,30 +614,6 @@ public class MainActivity extends FragmentActivity implements
 				Log.e("ConnectedThread", "Error on close");
 			}
 		}
-	}
-
-	@Override
-	public void onDiscoverDeviceActivityCreated() {
-		discoverDevicesInit();
-		registBroadcastReceivers();
-		getPairedDevices();
-
-	}
-
-	@Override
-	public void onChatActivityCreated() {
-		chatTextView = (TextView) findViewById(R.id.txtView_Chat);
-		chatTextView.setMovementMethod(new ScrollingMovementMethod());
-		inputTextView = (TextView) findViewById(R.id.edit_text_out);
-
-	}
-
-	@Override
-	public void onChatActivityDestroyed() {
-		connectedThread.isToStop = true;
-
-		Log.e(CONNECTIVITY_SERVICE, "CHAT FRAGMENT DESTROYED");
-
 	}
 
 }
